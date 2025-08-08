@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>Сапёр</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #2e2e2e;
+      color: white;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding-top: 30px;
+    }
+    h1 {
+      margin-bottom: 20px;
+    }
+    #game {
+      display: grid;
+      grid-template-columns: repeat(8, 40px);
+      grid-template-rows: repeat(8, 40px);
+      gap: 2px;
+    }
+    .cell {
+      width: 40px;
+      height: 40px;
+      background-color: #444;
+      border: 1px solid #666;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      cursor: pointer;
+      font-weight: bold;
+      font-size: 16px;
+      user-select: none;
+    }
+    .cell.open {
+      background-color: #ccc;
+      color: black;
+      cursor: default;
+    }
+    .cell.mine {
+      background-color: red;
+    }
+    .cell.flag {
+      background-color: #888;
+      color: yellow;
+    }
+    #restart {
+      margin-top: 20px;
+      padding: 10px 20px;
+      font-size: 16px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+
+<h1>Сапёр</h1>
+<div id="game"></div>
+<button id="restart">🔄 Новая игра</button>
+
+<script>
+  const size = 8;
+  const mineCount = 10;
+  let field = [];
+  let gameOver = false;
+
+  const gameContainer = document.getElementById("game");
+  const restartBtn = document.getElementById("restart");
+
+  function createField() {
+    gameOver = false;
+    field = [];
+    gameContainer.innerHTML = "";
+
+    for (let row = 0; row < size; row++) {
+      field[row] = [];
+      for (let col = 0; col < size; col++) {
+        field[row][col] = {
+          mine: false,
+          open: false,
+          flagged: false,
+          element: null,
+          count: 0
+        };
+      }
+    }
+
+    let minesPlaced = 0;
+    while (minesPlaced < mineCount) {
+      const r = Math.floor(Math.random() * size);
+      const c = Math.floor(Math.random() * size);
+      if (!field[r][c].mine) {
+        field[r][c].mine = true;
+        minesPlaced++;
+      }
+    }
+
+    for (let row = 0; row < size; row++) {
+      for (let col = 0; col < size; col++) {
+        if (field[row][col].mine) continue;
+        let count = 0;
+        for (let dr = -1; dr <= 1; dr++) {
+          for (let dc = -1; dc <= 1; dc++) {
+            const nr = row + dr;
+            const nc = col + dc;
+            if (nr >= 0 && nr < size && nc >= 0 && nc < size) {
+              if (field[nr][nc].mine) count++;
+            }
+          }
+        }
+        field[row][col].count = count;
+      }
+    }
+
+    for (let row = 0; row < size; row++) {
+      for (let col = 0; col < size; col++) {
+        const cell = document.createElement("div");
+        cell.classList.add("cell");
+        cell.dataset.row = row;
+        cell.dataset.col = col;
+
+        cell.addEventListener("click", onLeftClick);
+        cell.addEventListener("contextmenu", onRightClick);
+
+        gameContainer.appendChild(cell);
+        field[row][col].element = cell;
+      }
+    }
+  }
+
+  function onLeftClick(e) {
+    if (gameOver) return;
+    const row = +this.dataset.row;
+    const col = +this.dataset.col;
+    const cell = field[row][col];
+    if (cell.open || cell.flagged) return;
+
+    if (cell.mine) {
+      revealAllMines();
+      cell.element.classList.add("mine");
+      alert("💥 Игра окончена!");
+      gameOver = true;
+      return;
+    }
+
+    openCell(row, col);
+
+    if (checkWin()) {
+      alert("🎉 Победа!");
+      gameOver = true;
+    }
+  }
+
+  function onRightClick(e) {
+    e.preventDefault();
+    if (gameOver) return;
+    const row = +this.dataset.row;
+    const col = +this.dataset.col;
+    const cell = field[row][col];
+    if (cell.open) return;
+
+    cell.flagged = !cell.flagged;
+    cell.element.classList.toggle("flag");
+    cell.element.textContent = cell.flagged ? "🚩" : "";
+  }
+
+  function openCell(row, col) {
+    const cell = field[row][col];
+    if (cell.open || cell.flagged) return;
+
+    cell.open = true;
+    cell.element.classList.add("open");
+    if (cell.count > 0) {
+      cell.element.textContent = cell.count;
+    } else {
+      for (let dr = -1; dr <= 1; dr++) {
+        for (let dc = -1; dc <= 1; dc++) {
+          const nr = row + dr;
+          const nc = col + dc;
+          if (nr >= 0 && nr < size && nc >= 0 && nc < size && !(dr === 0 && dc === 0)) {
+            openCell(nr, nc);
+          }
+        }
+      }
+    }
+  }
+
+  function revealAllMines() {
+    for (let row = 0; row < size; row++) {
+      for (let col = 0; col < size; col++) {
+        const cell = field[row][col];
+        if (cell.mine) {
+          cell.element.classList.add("mine");
+          cell.element.textContent = "💣";
+        }
+      }
+    }
+  }
+
+  function checkWin() {
+    for (let row = 0; row < size; row++) {
+      for (let col = 0; col < size; col++) {
+        const cell = field[row][col];
+        if (!cell.mine && !cell.open) {
+          return false;
+        }
+      }
+    }
+    return true;
+  }
+
+  restartBtn.addEventListener("click", createField);
+  createField();
+</script>
+
+</body>
+</html>
